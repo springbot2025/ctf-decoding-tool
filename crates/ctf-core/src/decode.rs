@@ -37,10 +37,25 @@ fn clean(s: &str) -> String {
     s.split_whitespace().collect::<String>().replace(',', "")
 }
 
-/// 宽松 UTF-8 转换
+/// errors=ignore：无效 UTF-8 字节直接丢弃（Python decode(errors="ignore") 语义）
 fn to_utf8(bytes: Vec<u8>) -> String {
-    String::from_utf8(bytes)
-        .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
+    let mut out = String::with_capacity(bytes.len());
+    let mut rest: &[u8] = &bytes;
+    while !rest.is_empty() {
+        match std::str::from_utf8(rest) {
+            Ok(s) => { out.push_str(s); break; }
+            Err(e) => {
+                let up_to = e.valid_up_to();
+                // up_to 之前的部分必为合法 UTF-8
+                out.push_str(std::str::from_utf8(&rest[..up_to]).unwrap());
+                match e.error_len() {
+                    Some(len) => rest = &rest[up_to + len..],
+                    None => break, // 末尾不完整序列，整体丢弃
+                }
+            }
+        }
+    }
+    out
 }
 
 
@@ -683,7 +698,8 @@ fn decode_hex(cipher: &str) -> Result<String, DecodeError> {
 
 fn decode_binary(cipher: &str) -> Result<String, DecodeError> {
     let v = clean(cipher).replace("0b", "");
-    // 支持空格分隔（每8位一组）或连续字符串
+    // FIXME: clean() 已删除所有空格，下面的 contains(' ') 分支永远不可达（死代码）；
+    // unwrap_or("") 会静默吞掉非法 UTF-8 块
     let tokens: Vec<&str> = if v.contains(' ') {
         v.split_whitespace().collect()
     } else {
@@ -705,6 +721,8 @@ fn decode_reverse(cipher: &str) -> Result<String, DecodeError> {
 // ─── 自动识别 ─────────────────────────────────────────────────────────────────
 
 /// 可打印字符比例评分
+// FIXME: 评分过于粗糙——reverse/rot13/atbash 对任意输入都返回高可打印文本，
+// 在自动识别结果里形成噪声；可考虑英文词频/flag 前缀/信息熵加权
 fn printable_score(s: &str) -> f64 {
     if s.is_empty() { return 0.0; }
     let printable = s.chars().filter(|c| !c.is_control() || *c == '\n' || *c == '\t').count();
@@ -771,6 +789,8 @@ pub fn decode(method: &str, cipher: &str, params: &Params) -> Result<String, Dec
         "beaufort"       => decode_beaufort(cipher, params),
         // 现代密码
         "xor"            => decode_xor(cipher, params),
+        // FIXME: 字符串协议脆弱——明文含 ": " 或换行时前端 split 解析会错位，
+        // 应像 caesar_brute_force 一样改为结构化返回 Vec<(u8, String)>
         "xor_brute"      => Ok(decode_xor_brute(cipher)
                                 .iter()
                                 .map(|(k, v)| format!("key=0x{k:02x}: {v}"))

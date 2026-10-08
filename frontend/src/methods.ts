@@ -1,4 +1,6 @@
 // Method registry — single source of truth for sidebar + param rendering
+// FIXME: 与后端 decode() 的 match 分支是双份手写维护，新增方法需两边同步；
+// 可考虑由后端 methods_cmd 返回元数据，前端直接渲染
 export interface Param {
   key: string;
   label: string;
