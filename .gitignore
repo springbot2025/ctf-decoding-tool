@@ -1,0 +1,17 @@
+# Rust
+/target
+
+# Node / frontend
+node_modules
+/frontend/dist
+
+# Tauri generated
+**/gen/schemas
+
+# tsc 仅用于类型检查，忽略误生成的产物
+frontend/src/*.js
+
+# OS / editor
+Thumbs.db
+.DS_Store
+*.lnk

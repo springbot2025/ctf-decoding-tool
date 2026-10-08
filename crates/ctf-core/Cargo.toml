@@ -1,0 +1,22 @@
+[package]
+name    = "ctf-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+thiserror   = { workspace = true }
+
+base64        = "0.22"
+data-encoding = "2.6"
+hex           = "0.4"
+bs58          = "0.5"
+regex         = "1"
+urlencoding   = "2"
+aes           = "0.8"
+cbc           = { version = "0.1", features = ["alloc"] }
+ecb           = "0.1"
+cipher        = "0.4"
+num-bigint    = "0.4"
+num-traits    = "0.2"
